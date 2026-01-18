@@ -29,5 +29,4 @@ python relational-databases.py
 
 ## License
 
-This project is licensed under the MIT License.
-Feel free to use, modify, and distribute for educational purposes.
+N/A
