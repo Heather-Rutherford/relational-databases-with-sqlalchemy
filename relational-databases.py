@@ -6,7 +6,7 @@
 
 # Part 1: Setup
 # 1. Import necessary modules from SQLAlchemy:
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Boolean
+from sqlalchemy import Select, create_engine, Column, Integer, String, ForeignKey, Boolean, func, select
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Relationship, Session, Mapped, mapped_column, DeclarativeBase, relationship
 from typing import List, Optional
@@ -109,12 +109,75 @@ session.commit()
 # Write Python code to:
 
 # 1. Retrieve all users and print their information.
+queryAllUsers = select(User)
+users = session.execute(queryAllUsers).scalars().all()
+for user in users:
+    print(f"User ID: {user.id}, Name: {user.name}, Email: {user.email}.")
+    
 # 2. Retrieve all products and print their name and price.
+queryAllProducts = select(Product)
+products = session.execute(queryAllProducts).scalars().all()
+for product in products:
+    print(f"Product Name: {product.name}, Price: {product.price}.")
+    
 # 3. Retrieve all orders, showing the user’s name, product name, and quantity.
+queryAllOrders = (
+    select(User.name, Product.name, Order.quantity)
+    .join(Order, User.id == Order.user_id)
+    .join(Product, Product.id == Order.product_id)
+)
+queryAllOrdersResults = session.execute(queryAllOrders).all()
+for user_name, product_name, quantity in queryAllOrdersResults:
+    print(f"User: {user_name}, Product: {product_name}, Quantity: {quantity}.")
+    
 # 4. Update a product’s price.
+queryUpdateProductPrice = select(Product).where(Product.name == 'Kindle')
+queryUpdateProductPriceResult = session.execute(queryUpdateProductPrice).scalars().first()
+queryUpdateProductPriceResult.price = 150
+session.commit()
+
 # 5. Delete a user by ID.
+queryDeleteUser = session.get(User, 2)  # Assuming we want to delete user with ID 2
+if queryDeleteUser:
+    session.delete(queryDeleteUser)
+    session.commit()
 
 # Part 6: Bonus (Optional)
-# -- Add a status column to the Order table (Boolean to represent shipped or not).
+# -- Add a status column to the Order table
+# (Boolean to represent shipped or not).
+class Order(Base):
+    __tablename__ = 'orders'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
+    product_id: Mapped[int] = mapped_column(ForeignKey('product.id'))
+    quantity: Mapped[int] = mapped_column(Integer)
+    shipped: Mapped[bool] = mapped_column(Boolean, default=False)
+    
+    # Many-to-One: Order -> User
+    user: Mapped['User'] = relationship(back_populates="orders")
+    # Many-to-One: Order -> Product
+    product: Mapped['Product'] = relationship(back_populates="orders")
+
+queryAlterOrdersTable = "ALTER TABLE orders add COLUMN shipped BOOLEAN DEFAULT 0"
+with engine.connect() as conn:
+    conn.execute(queryAlterOrdersTable)
+    conn.commit()
+    
 # -- Query all orders that are not shipped.
+queryUnshippedOrders = select(Order).where(Order.shipped == False)
+unshippedOrders = session.execute(queryUnshippedOrders).scalars().all()
+for order in unshippedOrders:
+    print(f"Unshipped OrderID: {order.id}, UserID: {order.user_id}, ProductID: {order.product_id}, Quantity: {order.quantity}.")
+    
 # -- Count the total number of orders per user.
+queryAllUsersOrdersCount = (
+    select(User.name, func.count(Order.id))
+    .join(Order, User.id == Order.user_id)
+    .group_by(User.id)
+)
+usersOrdersCount = session.execute(queryAllUsersOrdersCount).all()
+for user_name, order_count in usersOrdersCount:
+    print(f"User: {user_name}, Total Orders: {order_count}.")
+
+# Close the session
+session.close()
