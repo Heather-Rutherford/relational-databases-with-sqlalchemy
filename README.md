@@ -1,4 +1,4 @@
-## Advanced Python Module Project: Defeat the Evil Wizard
+## Hands-On Assignment: Relational Databases with SQLAlchemy
 
 ## Overview
 
