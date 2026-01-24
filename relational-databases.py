@@ -138,17 +138,18 @@ with Session() as session:
     except SQLAlchemyError as e:
         print(f"✗ Error retrieving products: {e}")
         
-    # 3. Retrieve all orders, showing the user's name, product name, and quantity.
+    # 3. Retrieve all orders, showing the user's name, product name, 
+    #    quantity, and shipped status.
     try:
         queryAllOrders = (
-            select(User.name, Product.name, Order.quantity)
+            select(User.name, Product.name, Order.quantity, Order.shipped)
             .join(Order, User.id == Order.user_id)
             .join(Product, Product.id == Order.product_id)
         )
         queryAllOrdersResults = session.execute(queryAllOrders).all()
         print("\nAll Orders:")
-        for user_name, product_name, quantity in queryAllOrdersResults:
-            print(f"User: {user_name}, Product: {product_name}, Quantity: {quantity}.")
+        for user_name, product_name, quantity, shipped in queryAllOrdersResults:
+            print(f"User: {user_name}, Product: {product_name}, Quantity: {quantity}, Shipped: {shipped}.")
     except SQLAlchemyError as e:
         print(f"✗ Error retrieving orders: {e}")
         
@@ -191,11 +192,16 @@ with Session() as session:
         
     # -- Query all orders that are not shipped.
     try:
-        queryUnshippedOrders = select(Order).where(Order.shipped == False)
+        queryUnshippedOrders = (
+            select(Order)
+            .join(User, User.id == Order.user_id)
+            .join(Product, Product.id == Order.product_id)
+            .where(Order.shipped.is_(False))
+        )
         unshippedOrders = session.execute(queryUnshippedOrders).scalars().all()
         print("\nUnshipped Orders:")
         for order in unshippedOrders:
-            print(f"Unshipped OrderID: {order.id}, UserID: {order.user_id}, ProductID: {order.product_id}, Quantity: {order.quantity}.")
+            print(f"Unshipped OrderID: {order.id}, User Name: {order.user.name}, Product Name: {order.product.name}, Quantity: {order.quantity}.")
     except SQLAlchemyError as e:
         print(f"✗ Error querying unshipped orders: {e}")
         
